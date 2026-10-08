@@ -240,10 +240,11 @@ document.getElementById('app').innerHTML=
 <div class=tiles style="grid-template-columns:1fr"><button class="tile" id=camtog onclick="camToggle()">Camera mode</button></div>
 <div class=hint id=camhint></div>
 <div id=camwrap style="display:none;position:relative;aspect-ratio:16/9;margin-top:10px;border-radius:14px;overflow:hidden;background:#000"><div id=camlive style="position:absolute;inset:0"></div></div>
-<div class=row id=camrow style="display:none"><button class=sm id=pipbtn onclick="camPip()">Picture-in-Picture</button><button class=sm onclick="GioCam.flip().catch(e=>$('camhint').textContent=e.message)">Flip camera</button></div>
+<div class=row id=camrow style="display:none"><span style="font-weight:700">Zoom</span><button class=sm onclick="camZ((+$('camzoom').value)-0.5)">−</button><input type=range id=camzoom min=1 max=5 step=0.1 value=1 style="flex:1;min-width:90px" oninput="camZ(this.value)"><button class=sm onclick="camZ((+$('camzoom').value)+0.5)">+</button><b id=zoomval style="min-width:38px">1.0x</b></div>
+<div class=row id=camrow2 style="display:none"><button class=sm id=pipbtn onclick="camPip()">Picture-in-Picture</button><button class=sm onclick="GioCam.flip().catch(e=>$('camhint').textContent=e.message)">Flip camera</button></div>
 <div class=note>ON: the camera and mic replace the transparent background on every overlay page (the overlay page asks for its own camera permission the first time - tap the blue button on it). PiP floats the live view using your phone's own Picture-in-Picture; on iPhone it shows the camera plus a simplified scoreboard (scores, clock, down &amp; distance, FLAG) - the 3D animations only show in the big live view above, because iOS can only float a video, not a web page. Mic audio goes to the overlay page; it is muted in the PiP window so you don't get an echo.</div></div>
 <div class=card id=webcard style="display:none"><h3>Website mode - no server</h3><div class=note>This page is running the scoreboard itself and talks directly to your other devices, so nothing has to be hosted or left running. Keep this page open (that is what holds the game). On the stream device open the Overlay link; to control from a second device open the Controller link.</div>
-<div class=row><button class=sm onclick="cpy(__gio.overlayUrl,this)">Copy overlay link</button><button class=sm onclick="cpy(__gio.controlUrl,this)">Copy controller link</button></div><div class=hint id=roomtxt></div></div></section>`;
+<div class=row><button class=sm onclick="cpy(__gio.overlayUrl,this)">Copy overlay link</button><button class=sm onclick="cpy(__gio.controlUrl,this)">Copy controller link</button></div><div class=hint id=roomtxt></div><div class=hint id=webstat style="color:var(--gold)"></div><div class=row><input id=joincode placeholder="Room code to join" maxlength=12 style="flex:1;text-transform:uppercase"><button class=sm onclick="joinRoom()">Join room</button></div></div></section>`;
 
 let slT=0;const sl=(k,v)=>{const n=Date.now();if(n-slT>70){slT=n;st({[k]:+v})}};document.addEventListener('change',e=>{const i=e.target;if(i.id==='sbscale')st({sbScale:+i.value});if(i.id==='bugscale')st({bugScale:+i.value})});
 const tagSecs=v=>{const n=Math.min(300,Math.max(5,Math.round(+v)||6));$('tagsecs').value=n;st({tagSecs:n})};
@@ -301,23 +302,28 @@ es.onerror=()=>bad('Disconnected from the scoreboard server — retrying…');
 
 // ---- settings: camera mode + PiP + website-mode links
 const cpy=(t,b)=>{(navigator.clipboard?navigator.clipboard.writeText(t):Promise.reject()).catch(()=>prompt('Copy this link',t));const o=b.textContent;b.textContent='Copied';setTimeout(()=>b.textContent=o,1200)};
-GioCam.init({getS:()=>S&&{S,at},onChange:()=>camSync()});
+let camErr='';
+GioCam.init({getS:()=>S&&{S,at},onChange:()=>camSync(),onEnd:m=>{camErr=m;st({cam:false})}});
+let zT=0;function camZ(v){v=Math.min(5,Math.max(1,+v||1));$('camzoom').value=v;$('zoomval').textContent=v.toFixed(1)+'x';clearTimeout(zT);zT=setTimeout(()=>st({camZoom:v}),60)}
 let camIf=null;
 function camSync(){if(!S)return;const on=!!S.cam,loc=GioCam.on;
  $('camtog').classList.toggle('on',on);
- $('camwrap').style.display=on?'block':'none';$('camrow').style.display=on?'flex':'none';
+ $('camwrap').style.display=on?'block':'none';$('camrow').style.display=on?'flex':'none';$('camrow2').style.display=on?'flex':'none';
  if(on&&!camIf){camIf=document.createElement('iframe');camIf.src='overlay.html?embed=1'+(window.__gio?'&room='+__gio.room:'');Object.assign(camIf.style,{position:'absolute',inset:0,width:'100%',height:'100%',border:0,background:'transparent'});$('camlive').append(camIf)}
  if(!on&&camIf){camIf.remove();camIf=null}
  if(on&&loc&&GioCam.src&&!GioCam.src.isConnected){GioCam.src.style.zIndex=0;$('camwrap').prepend(GioCam.src);camIf.style.zIndex=1;$('camlive').style.zIndex=1}
  $('pipbtn').textContent=GioCam.pipOn()?'Close Picture-in-Picture':'Picture-in-Picture';
  $('pipbtn').style.display=GioCam.supported()?'':'none';
- $('camhint').textContent=on?(loc?'Live: camera + mic on this device.':'On for the overlay pages. Tap Camera mode to also start the camera on THIS device (needed for the preview and PiP).'):'Off - overlays have a transparent background.';
+ if(GioCam.src)GioCam.src.style.transform='scale('+(S.camZoom||1)+')';if(document.activeElement!==$('camzoom')){$('camzoom').value=S.camZoom||1;$('zoomval').textContent=(S.camZoom||1).toFixed(1)+'x'}
+ $('camhint').textContent=camErr?camErr:on?(loc?'Live: camera + mic on this device.':'On for the overlay pages. Tap Camera mode to also start the camera on THIS device (needed for the preview and PiP).'):'Off - overlays have a transparent background.';
  if(window.__gio){$('webcard').style.display='block';$('roomtxt').textContent='Room code: '+__gio.room}}
 async function camToggle(){const on=!(S&&S.cam);
- try{if(on&&S&&S.cam===false&&false){}
+ camErr='';try{
   if(S&&S.cam&&!GioCam.on){await GioCam.start();camSync();return}
   if(on){await GioCam.start();}else GioCam.stop();st({cam:on})}
- catch(e){$('camhint').textContent=e.name==='NotAllowedError'?'Camera/mic permission was denied. Allow it in your browser settings for this site, then try again.':'Camera problem: '+e.message;st({cam:false})}}
+ catch(e){camErr=e.name==='NotAllowedError'?'Camera/mic permission was denied. Allow it in Settings > Safari > Camera & Microphone for this site, then try again.':e.name==='NotReadableError'?'The camera is busy - another tab or app is using it. Close it and try again.':'Camera problem: '+(e.name||'')+' '+e.message;st({cam:false});camSync()}}
+function joinRoom(){const v=$('joincode').value.toUpperCase().replace(/[^A-Z0-9]/g,'');if(v)location.href=location.pathname+'?room='+v+'&join=1'}
+window.__gioStatus=t=>{const e=$('webstat');if(e)e.textContent=t};if(window.__gio&&__gio.status)__gioStatus(__gio.status);
 function camPip(){GioCam.pip().then(camSync).catch(e=>$('camhint').textContent='PiP: '+e.message)}
 let t0='score';try{t0=localStorage.getItem('gg-tab')||'score'}catch(e){}tab(t0);
 </script></body></html>

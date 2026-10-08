@@ -27,26 +27,42 @@ if(embedded){const t=setInterval(()=>{if(parent.__gioHub){clearInterval(t);hub=p
 const load=()=>new Promise((ok,no)=>{if(window.Peer)return ok();const s=document.createElement('script');s.src='peerjs.min.js';
  s.onload=ok;s.onerror=()=>{s.remove();const c=document.createElement('script');c.src='https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js';c.onload=ok;c.onerror=no;document.head.appendChild(c)};document.head.appendChild(s)});
 const ID='giogames-'+room;
+const ICE={config:{iceServers:[{urls:'stun:stun.l.google.com:19302'},{urls:'stun:stun1.l.google.com:19302'},
+ {urls:['turn:openrelay.metered.ca:80','turn:openrelay.metered.ca:443','turn:openrelay.metered.ca:443?transport=tcp'],username:'openrelayproject',credential:'openrelayproject'}]}};
+const status=t=>{window.__gio.status=t;window.__gioStatus&&window.__gioStatus(t)};
+const canHost=!overlayPage&&!Q.has('join');
 function startHub(){
  const conns=new Set(),env={emit:(ev,d)=>{const s=JSON.stringify(d);listeners.forEach(l=>l.fire(ev,s));conns.forEach(c=>c.open&&c.send({t:'ev',ev,d:s}))},
   save:j=>ls('gio-state',j),load:()=>ls('gio-state')||'{}',ov:()=>[...listeners].filter(l=>l.o).length+[...conns].filter(c=>c.ovl).length};
- const core=createCore(env);
+ const core=createCore(env),count=()=>status('Hub ready. Other devices connected: '+conns.size+(conns.size?' (overlays: '+[...conns].filter(c=>c.ovl).length+')':' - open the overlay link on your other device'));
  hub={call:async(n,b)=>core.call(n,b),listen:l=>{l.fire('',JSON.stringify(core.snap()))},unlisten:l=>{listeners.delete(l);core.overlayGone()}};
- window.__gioHub=hub;window.__gioReady();
- const p=new Peer(ID);p.on('connection',c=>{c.on('data',m=>{
-  if(m.t==='sub'){c.ovl=!!m.o;conns.add(c);c.send({t:'ev',ev:'',d:JSON.stringify(core.snap())})}
+ window.__gioHub=hub;window.__gioReady();status('Starting hub... (contacting the free PeerJS broker)');
+ const p=new Peer(ID,ICE);
+ p.on('open',count);
+ p.on('connection',c=>{c.on('data',m=>{
+  if(m.t==='sub'){c.ovl=!!m.o;conns.add(c);c.send({t:'ev',ev:'',d:JSON.stringify(core.snap())});count()}
   else if(m.t==='api')c.send({t:'res',id:m.id,ok:core.call(m.n,m.b)})});
-  c.on('close',()=>{conns.delete(c);core.overlayGone()})});
- p.on('error',e=>{if(e.type==='unavailable-id')startClient(); else setTimeout(()=>{},0)});
+  c.on('close',()=>{conns.delete(c);core.overlayGone();count()});c.on('error',()=>{conns.delete(c);count()})});
+ p.on('disconnected',()=>{status('Lost the broker, reconnecting...');try{p.reconnect()}catch(e){}});
+ p.on('error',e=>{if(e.type==='unavailable-id'){p.destroy();startClient(true)}
+  else{status('Hub problem ('+e.type+'). Retrying...');p.destroy();setTimeout(startHub,4000)}});
 }
-function startClient(){
- const p=new Peer(),pend={};let c=null,n=0;
- const connect=()=>{c=p.connect(ID,{reliable:true});
-  c.on('open',()=>{c.send({t:'sub',o:overlayPage});window.__gioReady()});
+function startClient(tryHost){
+ const p=new Peer(undefined,ICE),pend={};let c=null,n=0,miss=0,opened=false;
+ const connect=()=>{status('Connecting to room '+room+'...');c=p.connect(ID,{reliable:true});
+  const to=setTimeout(()=>{if(!c.open){status('Still connecting to room '+room+'... If this never connects: the controller page must be open, and some mobile networks block direct connections.');}},8000);
+  c.on('open',()=>{clearTimeout(to);miss=0;opened=true;status('Connected to room '+room);c.send({t:'sub',o:overlayPage});window.__gioReady()});
   c.on('data',m=>{if(m.t==='ev')listeners.forEach(l=>l.fire(m.ev,m.d));else if(m.t==='res'&&pend[m.id]){pend[m.id](m.ok);delete pend[m.id]}});
-  c.on('close',()=>{listeners.forEach(l=>l.fire('_err'));setTimeout(connect,2500)})};
+  c.on('close',()=>{status('Disconnected - retrying...');listeners.forEach(l=>l.fire('_err'));setTimeout(connect,2500)});
+  c.on('error',()=>{})};
  hub={call:(n2,b)=>new Promise(r=>{if(!c||!c.open)return r(false);const id=++n;pend[id]=r;c.send({t:'api',id,n:n2,b})}),listen:l=>{if(c&&c.open)c.send({t:'sub',o:l.o})}};
- p.on('open',connect);p.on('error',e=>{if(e.type==='peer-unavailable'){listeners.forEach(l=>l.fire('_err'));setTimeout(connect,3000)}});
+ p.on('open',connect);
+ p.on('disconnected',()=>{try{p.reconnect()}catch(e){}});
+ p.on('error',e=>{
+  if(e.type==='peer-unavailable'){listeners.forEach(l=>l.fire('_err'));
+   if(tryHost&&canHost&&++miss>=2){status('Nobody is hosting room '+room+' - taking over as the hub');p.destroy();setTimeout(startHub,500);return}
+   status('Room '+room+' has no hub yet - open the controller page first ('+miss+')');setTimeout(connect,3000)}
+  else status('Connection problem ('+e.type+'). Retrying...')});
 }
-load().then(()=>{(overlayPage||Q.has('join'))?startClient():startHub()}).catch(()=>listeners.forEach(l=>l.fire('_err')));
+load().then(()=>{canHost?startHub():startClient(false)}).catch(()=>{status('Could not load PeerJS (blocked?). Put peerjs.min.js next to index.html.');listeners.forEach(l=>l.fire('_err'))});
 })();

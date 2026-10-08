@@ -244,7 +244,7 @@ async function camOn(){if(camBusy||camStream)return;camBusy=true;
  catch(e){camStream&&!EMB&&camStream.getTracks().forEach(t=>t.stop());camStream=null;if(!EMB)camTap.style.display='block';
   if(camEl.srcObject&&!camEl.muted){camEl.muted=true;camEl.play().catch(()=>{})}}finally{camBusy=false}}
 function camOff(){camTap.style.display='none';camEl.classList.remove('on');camEl.srcObject=null;if(camStream&&!EMB)camStream.getTracks().forEach(t=>t.stop());camStream=null}
-function camSync(){if(!S)return;S.cam?camOn():camOff()}
+function camSync(){if(!S)return;camEl.style.transform='scale('+Math.min(5,Math.max(1,+S.camZoom||1))+')';S.cam?camOn():camOff()}
 camTap.onclick=()=>camOn();addEventListener('click',()=>{if(camEl.srcObject&&camEl.muted&&!EMB){camEl.muted=false;camEl.play().catch(()=>{})}});
 const es=new EventSource('/events?o=1');
 es.addEventListener('flag',()=>playFlag());

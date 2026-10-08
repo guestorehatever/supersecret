@@ -2,7 +2,7 @@
 // Live view in the page = camera <video> + the real overlay (iframe) on top. PiP = a second <video> fed by a canvas (camera + scoreboard drawn on it),
 // because iOS can only float a real <video> element, never a web page.
 window.GioCam=(()=>{
- let stream=null,facing='environment',src=null,pipv=null,cv=null,g=null,timer=0,getS=()=>null,onChange=()=>{};
+ let onEnd=()=>{},stream=null,facing='environment',src=null,pipv=null,cv=null,g=null,timer=0,getS=()=>null,onChange=()=>{};
  const W=1280,H=720,Q=['','1ST','2ND','3RD','4TH','OT'];
  const fmt=ms=>{const s=Math.ceil(ms/1000);return Math.floor(s/60)+':'+String(s%60).padStart(2,'0')};
  function plate(x,y,w,h,t,right){g.fillStyle=t.color;g.fillRect(x,y,w,h);g.fillStyle=t.tc;g.textBaseline='middle';
@@ -16,10 +16,14 @@ window.GioCam=(()=>{
   g.font='800 18px system-ui,sans-serif';g.fillText(Q[S.qtr]||'',x0+pw+mw/2,y+18);g.font='900 34px system-ui,sans-serif';g.fillText(fmt(ms),x0+pw+mw/2,y+43);
   const fl=S.flag&&S.flag.banner,dd=S.down?(Q[S.down]+' & '+S.dist):'';
   if(fl||dd){g.fillStyle=fl?'#ffd400':S.ui.ddBg;g.fillRect(x0+pw,y+h,mw,30);g.fillStyle=fl?'#111':'#fff';g.font='800 20px system-ui,sans-serif';g.fillText(fl?'FLAG':dd,x0+pw+mw/2,y+h+16)}}
- function frame(){if(!src||!src.videoWidth)return;const r=Math.max(W/src.videoWidth,H/src.videoHeight),w=src.videoWidth*r,h=src.videoHeight*r;
+ function frame(){if(!src||!src.videoWidth)return;const d0=getS(),z=Math.min(5,Math.max(1,(d0&&d0.S&&+d0.S.camZoom)||1)),r=z*Math.max(W/src.videoWidth,H/src.videoHeight),w=src.videoWidth*r,h=src.videoHeight*r;
   g.drawImage(src,(W-w)/2,(H-h)/2,w,h);board()}
- async function start(opts){if(stream)return;
+ async function start(){if(stream)return;
+  if(!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia)throw new Error('Camera needs a secure (https) page. Open the website link, not a http://192.168... address.');
+  try{await open()}catch(e){stop();throw e}}
+ async function open(){
   stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:facing},width:{ideal:1280},height:{ideal:720}},audio:{echoCancellation:true,noiseSuppression:true,autoGainControl:true}});
+  stream.getTracks().forEach(t=>t.addEventListener('ended',()=>{if(stream){stop();onEnd('The camera stopped - another page, tab or app took it (only one page can use the camera at a time). Close other overlay tabs on this device and try again.')}}));
   src=document.createElement('video');src.muted=true;src.playsInline=true;src.setAttribute('playsinline','');src.autoplay=true;src.srcObject=stream;
   Object.assign(src.style,{position:'absolute',inset:0,width:'100%',height:'100%',objectFit:'cover'});
   cv=document.createElement('canvas');cv.width=W;cv.height=H;g=cv.getContext('2d');
@@ -41,4 +45,4 @@ window.GioCam=(()=>{
  return{start,stop,pip,pipOn,get stream(){return stream},get on(){return!!stream},get src(){return src},
   supported:()=>!!(document.pictureInPictureEnabled||document.createElement('video').webkitSetPresentationMode),
   flip:async()=>{facing=facing==='user'?'environment':'user';if(stream){stop();await start()}},
-  init:o=>{getS=o.getS;onChange=o.onChange||onChange}}})();
+  init:o=>{getS=o.getS;onChange=o.onChange||onChange;onEnd=o.onEnd||onEnd}}})();

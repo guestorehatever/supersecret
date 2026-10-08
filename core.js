@@ -2,7 +2,7 @@
 function createCore(env){
 const clamp0=0;
 const team=o=>({name:'',rec:'0-0',color:'#fcfb63',tc:'#111111',logo:'',score:0,to:3,td:{style:'hawks',color:'#1747d6',logo:''},...o});
-const defaults=()=>({v:2,fv:6,winLive:false,winEnding:false,winTeam:'',winPick:'auto',stadium:'',tagSecs:6,tagHold:false,tagLive:false,breakLive:false,breakEnding:false,startLive:false,startEnding:false,sb:true,cam:false,bug:false,showClock:false,sbBottom:3,sbScale:1,bugScale:1,qtr:0,down:0,dist:10,spot:'',poss:'',tdp:'',flag:{team:'',pen:'',banner:false},clock:{ms:720000,running:false},
+const defaults=()=>({v:2,fv:6,winLive:false,winEnding:false,winTeam:'',winPick:'auto',stadium:'',tagSecs:6,tagHold:false,tagLive:false,breakLive:false,breakEnding:false,startLive:false,startEnding:false,sb:true,cam:false,camZoom:1,bug:false,showClock:false,sbBottom:3,sbScale:1,bugScale:1,qtr:0,down:0,dist:10,spot:'',poss:'',tdp:'',flag:{team:'',pen:'',banner:false},clock:{ms:720000,running:false},
  ui:{scoreBg:'#ececec',qtrBg:'#101d24',ddBg:'#181a25'},
  away:team({name:'Farmington Knights',rec:'2-0',color:'#fcfb63',tc:'#111111',td:{style:'helmet',color:'#ffb000',logo:''}}),
  home:team({name:'Hillsboro Hawks',rec:'1-1',color:'#458df9',tc:'#ffffff',td:{style:'hawks',color:'#1747d6',logo:''}})});
