@@ -243,8 +243,10 @@ document.getElementById('app').innerHTML=
 <div class=row id=camrow style="display:none"><span style="font-weight:700">Zoom</span><button class=sm onclick="camZ((+$('camzoom').value)-0.5)">−</button><input type=range id=camzoom min=1 max=5 step=0.1 value=1 style="flex:1;min-width:90px" oninput="camZ(this.value)"><button class=sm onclick="camZ((+$('camzoom').value)+0.5)">+</button><b id=zoomval style="min-width:38px">1.0x</b></div>
 <div class=row id=camrow2 style="display:none"><button class=sm id=pipbtn onclick="camPip()">Picture-in-Picture</button><button class=sm onclick="GioCam.flip().catch(e=>$('camhint').textContent=e.message)">Flip camera</button></div>
 <div class=note>ON: the camera and mic replace the transparent background on every overlay page (the overlay page asks for its own camera permission the first time - tap the blue button on it). PiP floats the live view using your phone's own Picture-in-Picture; on iPhone it shows the camera plus a simplified scoreboard (scores, clock, down &amp; distance, FLAG) - the 3D animations only show in the big live view above, because iOS can only float a video, not a web page. Mic audio goes to the overlay page; it is muted in the PiP window so you don't get an echo.</div></div>
-<div class=card id=webcard style="display:none"><h3>Website mode - no server</h3><div class=note>This page is running the scoreboard itself and talks directly to your other devices, so nothing has to be hosted or left running. Keep this page open (that is what holds the game). On the stream device open the Overlay link; to control from a second device open the Controller link.</div>
-<div class=row><button class=sm onclick="cpy(__gio.overlayUrl,this)">Copy overlay link</button><button class=sm onclick="cpy(__gio.controlUrl,this)">Copy controller link</button></div><div class=hint id=roomtxt></div><div class=hint id=webstat style="color:var(--gold)"></div><div class=row><input id=joincode placeholder="Room code to join" maxlength=12 style="flex:1;text-transform:uppercase"><button class=sm onclick="joinRoom()">Join room</button></div></div></section>`;
+<div class=card id=webcard style="display:none"><h3>Website mode - paired overlay</h3>
+<div id=codebig style="font:900 34px/1.1 system-ui;letter-spacing:.14em;text-align:center;margin:10px 0 2px;color:var(--gold)"></div><div class=hint id=roomtxt style="text-align:center">Paired with the overlay showing this code.</div>
+<div class=note>The overlay page shows a code before anything else. You type it here (the box that appears when you open the deck), and the overlay then moves on to the starting-soon screen. The overlay keeps the same code on its device, and this deck remembers it, so reconnecting after a disconnect needs no typing. To pick your own code, open the overlay once with ?room=YOURCODE at the end of its link.</div>
+<div class=row><button class=sm onclick="cpy(__gio.overlayUrl,this)">Copy overlay link</button><button class=sm onclick="cpy(__gio.controlUrl,this)">Copy auto-connect link</button><button class=sm onclick="newCode()">Use a different code</button></div><div class=hint id=webstat style="color:var(--gold)"></div></div></section>`;
 
 let slT=0;const sl=(k,v)=>{const n=Date.now();if(n-slT>70){slT=n;st({[k]:+v})}};document.addEventListener('change',e=>{const i=e.target;if(i.id==='sbscale')st({sbScale:+i.value});if(i.id==='bugscale')st({bugScale:+i.value})});
 const tagSecs=v=>{const n=Math.min(300,Math.max(5,Math.round(+v)||6));$('tagsecs').value=n;st({tagSecs:n})};
@@ -316,12 +318,14 @@ function camSync(){if(!S)return;const on=!!S.cam,loc=GioCam.on;
  $('pipbtn').style.display=GioCam.supported()?'':'none';
  if(GioCam.src)GioCam.src.style.transform='scale('+(S.camZoom||1)+')';if(document.activeElement!==$('camzoom')){$('camzoom').value=S.camZoom||1;$('zoomval').textContent=(S.camZoom||1).toFixed(1)+'x'}
  $('camhint').textContent=camErr?camErr:on?(loc?'Live: camera + mic on this device.':'On for the overlay pages. Tap Camera mode to also start the camera on THIS device (needed for the preview and PiP).'):'Off - overlays have a transparent background.';
- if(window.__gio){$('webcard').style.display='block';$('roomtxt').textContent='Room code: '+__gio.room}}
+ if(window.__gio){$('webcard').style.display='block';$('codebig').textContent=__gio.room}}
 async function camToggle(){const on=!(S&&S.cam);
  camErr='';try{
   if(S&&S.cam&&!GioCam.on){await GioCam.start();camSync();return}
   if(on){await GioCam.start();}else GioCam.stop();st({cam:on})}
  catch(e){camErr=e.name==='NotAllowedError'?'Camera/mic permission was denied. Allow it in Settings > Safari > Camera & Microphone for this site, then try again.':e.name==='NotReadableError'?'The camera is busy - another tab or app is using it. Close it and try again.':'Camera problem: '+(e.name||'')+' '+e.message;st({cam:false});camSync()}}
+function saveCode(){const v=$('mycode').value.toUpperCase().replace(/[^A-Z0-9]/g,'');if(v.length<6){alert('Use at least 6 letters or numbers so nobody else lands in your room.');return}try{localStorage.setItem('gio-home',v)}catch(e){}location.href=location.pathname+'?room='+v}
+function newCode(){try{localStorage.removeItem('gio-last')}catch(e){}location.href=location.pathname}
 function joinRoom(){const v=$('joincode').value.toUpperCase().replace(/[^A-Z0-9]/g,'');if(v)location.href=location.pathname+'?room='+v+'&join=1'}
 window.__gioStatus=t=>{const e=$('webstat');if(e)e.textContent=t};if(window.__gio&&__gio.status)__gioStatus(__gio.status);
 function camPip(){GioCam.pip().then(camSync).catch(e=>$('camhint').textContent='PiP: '+e.message)}
