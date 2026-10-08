@@ -1,0 +1,323 @@
+<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,viewport-fit=cover"><meta name="theme-color" content="#06080d"><title>GIOGAMES Control</title><style>
+:root{--bg:#06080d;--panel:rgba(255,255,255,.045);--line:rgba(255,255,255,.09);--txt:#eef3ff;--mut:#8b98b0;--acc:#19c3ff;--gold:#ffd400;--grn:#22c55e;--red:#ef4444}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html{background:var(--bg)}
+body{margin:0;color:var(--txt);font:16px/1.3 system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;min-height:100vh;padding-bottom:calc(96px + env(safe-area-inset-bottom));
+ background:radial-gradient(900px 520px at 12% -8%,rgba(25,195,255,.17),transparent 60%),radial-gradient(700px 520px at 100% 0,rgba(255,212,0,.08),transparent 55%),var(--bg) fixed}
+
+/* ---------- live HUD ---------- */
+.hud{position:sticky;top:0;z-index:20;padding:8px 10px 8px;background:linear-gradient(rgba(6,8,13,.96),rgba(6,8,13,.86));backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);border-bottom:1px solid var(--line)}
+.hud>*{max-width:880px;margin-left:auto;margin-right:auto}
+.status{font-size:10px;letter-spacing:.2em;text-transform:uppercase;font-weight:800;color:#5ee38a;margin-bottom:6px;display:flex;align-items:center;gap:7px}
+.status::before{content:'';width:7px;height:7px;border-radius:50%;background:currentColor;box-shadow:0 0 9px currentColor}
+.status.bad{background:var(--red);color:#fff;padding:10px 12px;border-radius:10px;font-size:13px;letter-spacing:0;text-transform:none;line-height:1.35;font-weight:700}
+.status.bad::before{display:none}
+.board{display:grid;grid-template-columns:1fr auto 1fr;gap:8px;align-items:stretch}
+.side{display:flex;flex-direction:column;align-items:flex-start;justify-content:center;gap:2px;padding:8px 10px;border-radius:14px;background:#0c101a;border-left:4px solid var(--c,#555);box-shadow:inset 0 0 44px -16px var(--c,#555);min-width:0;transition:box-shadow .4s,border-color .4s}
+.side.home{align-items:flex-end;text-align:right;border-left:0;border-right:4px solid var(--c,#555)}
+.hnrow{display:flex;align-items:center;gap:5px;max-width:100%}.side.home .hnrow{flex-direction:row-reverse}
+.hn{font-weight:800;font-size:11px;letter-spacing:.06em;text-transform:uppercase;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:#d6deee;min-width:0}
+.ball{font-size:12px;filter:drop-shadow(0 0 6px rgba(255,170,60,.9))}
+.hs{font-size:38px;font-weight:900;font-variant-numeric:tabular-nums;line-height:1}
+.mid{display:flex;flex-direction:column;align-items:center;justify-content:center;min-width:100px;gap:3px}
+.hq{font-size:10px;letter-spacing:.24em;color:var(--mut);font-weight:800}
+.hc{font-size:28px;font-weight:900;font-variant-numeric:tabular-nums;line-height:1;text-shadow:0 0 18px rgba(25,195,255,.55)}
+.hc.low{color:#ff7b7b;text-shadow:0 0 18px rgba(255,80,80,.8)}
+.hplay{flex:none;padding:5px 14px;font-size:11px;letter-spacing:.14em;border-radius:99px;min-width:0}
+.sit{text-align:center;font-size:12px;font-weight:700;color:#aebad0;margin-top:6px;letter-spacing:.03em}
+.hflag{margin-top:6px;text-align:center;padding:6px 10px;border-radius:10px;font-size:12px;font-weight:900;letter-spacing:.14em;text-transform:uppercase;color:#111;cursor:pointer;
+ background:repeating-linear-gradient(135deg,#ffd400 0 14px,#f0c200 14px 28px);animation:glowGold 1.6s ease-in-out infinite}
+@keyframes glowGold{0%,100%{box-shadow:0 0 0 rgba(255,212,0,0)}50%{box-shadow:0 0 22px rgba(255,212,0,.55)}}
+.banner{display:none;background:linear-gradient(135deg,#6b4e00,#a67800);border-radius:12px;padding:10px 12px;margin-top:6px;font-size:13px;font-weight:700}
+
+/* ---------- layout ---------- */
+main{max-width:880px;margin:0 auto;padding:4px 10px}
+.panel{display:none;animation:fade .25s ease}.panel.act{display:block}
+@keyframes fade{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+.grid2{display:grid;grid-template-columns:minmax(0,1fr);gap:0 12px}.grid2>*{min-width:0}
+@media(min-width:760px){.grid2{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:20px;padding:14px;margin:12px 0;backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px)}
+.card.team{border-top:3px solid var(--c,var(--acc))}
+h3{margin:0 0 10px;font-size:11px;letter-spacing:.2em;color:var(--mut);text-transform:uppercase;display:flex;align-items:center;gap:8px;font-weight:800}
+h3::before{content:'';width:4px;height:12px;border-radius:2px;background:var(--acc);box-shadow:0 0 10px var(--acc)}
+.sub{margin:14px 0 6px}
+.row{display:flex;gap:6px;margin:6px 0;flex-wrap:wrap;align-items:center}
+.lb{flex:2;color:#aab6c9;font-size:14px}.note{color:var(--mut);font-size:12.5px;margin:6px 0 0;line-height:1.4}
+
+/* ---------- controls ---------- */
+button,.fbtn{font:inherit;font-weight:800;border:1px solid var(--line);border-radius:13px;background:linear-gradient(180deg,rgba(255,255,255,.1),rgba(255,255,255,.04));color:var(--txt);padding:14px 6px;flex:1;min-width:46px;text-align:center;cursor:pointer;
+ box-shadow:0 2px 0 rgba(0,0,0,.4);transition:transform .08s,box-shadow .2s,filter .15s}
+button:hover,.fbtn:hover{filter:brightness(1.12)}button:active,.fbtn:active{transform:scale(.94)}button:disabled,select:disabled{opacity:.38;pointer-events:none}
+.on{background:linear-gradient(135deg,var(--acc),#74e2ff)!important;color:#00212e!important;border-color:transparent;box-shadow:0 0 20px rgba(25,195,255,.5)}
+.go{background:linear-gradient(135deg,#15a34a,#4ade80);color:#04290f;border-color:transparent}
+.stop,.red{background:linear-gradient(135deg,#b91c1c,#f87171);color:#fff;border-color:transparent}
+.td{background:linear-gradient(135deg,#0f9d46,#3be07c);color:#032410;border-color:transparent;flex:2 1 150px;letter-spacing:.04em;box-shadow:0 0 22px rgba(59,224,124,.28)}
+.sm{padding:10px 8px;font-size:13px}
+.seg{display:flex;gap:4px;background:rgba(0,0,0,.38);padding:4px;border-radius:15px;border:1px solid var(--line)}
+.seg button,.go,.stop{white-space:nowrap}.seg button{border:0;box-shadow:none;background:transparent;padding:12px 2px;font-size:14px;color:#c8d2e6}
+input,select{font:inherit;padding:12px;border-radius:12px;border:1px solid var(--line);background:rgba(0,0,0,.42);color:#fff;flex:1;min-width:0}
+select{appearance:none;-webkit-appearance:none;background-image:linear-gradient(45deg,transparent 50%,#8b98b0 50%),linear-gradient(135deg,#8b98b0 50%,transparent 50%);background-position:calc(100% - 18px) 55%,calc(100% - 12px) 55%;background-size:6px 6px;background-repeat:no-repeat;padding-right:32px}
+input:focus,select:focus{outline:2px solid var(--acc);outline-offset:0}
+input[type=color]{flex:0 0 58px;padding:3px;height:46px}
+input[type=range]{-webkit-appearance:none;appearance:none;height:8px;padding:0;border-radius:8px;background:rgba(255,255,255,.15);width:100%;flex:1 1 100%;border:0}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:28px;height:28px;border-radius:50%;background:var(--acc);border:3px solid #fff;box-shadow:0 0 16px rgba(25,195,255,.8)}
+input[type=range]::-moz-range-thumb{width:22px;height:22px;border-radius:50%;background:var(--acc);border:3px solid #fff;box-shadow:0 0 16px rgba(25,195,255,.8)}
+.srow{margin:14px 0 4px}.srow .top{display:flex;justify-content:space-between;align-items:center;color:#aab6c9;font-size:14px;margin-bottom:10px}
+.pill{background:rgba(25,195,255,.14);color:var(--acc);border-radius:99px;padding:2px 10px;font-weight:800;font-size:13px;min-width:48px;text-align:center}
+details{margin:10px 0;background:rgba(0,0,0,.25);border:1px solid var(--line);border-radius:14px;padding:2px 12px}
+summary{padding:12px 0;font-weight:800;color:#cdd8ea;cursor:pointer;font-size:14px}
+.thumb{width:46px;height:46px;object-fit:contain;border-radius:10px;background:repeating-conic-gradient(#2a3142 0 25%,#1d2230 0 50%) 0 0/12px 12px;flex:none}
+
+/* ---------- score tab ---------- */
+.thead{display:flex;align-items:center;gap:10px;margin-bottom:4px}.sw{width:12px;height:28px;border-radius:5px;background:var(--c,var(--acc));box-shadow:0 0 14px var(--c,var(--acc))}
+.ttl{font-weight:900;font-size:18px;flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.ttl small{color:var(--mut);font-weight:700;font-size:13px}.side-tag{font-size:10px;letter-spacing:.16em;color:var(--mut);font-weight:800}
+.big{font-size:84px;font-weight:900;text-align:center;flex:2;font-variant-numeric:tabular-nums;line-height:1;text-shadow:0 0 30px var(--c,transparent)}
+.bump{animation:bump .38s cubic-bezier(.2,1.5,.4,1)}@keyframes bump{0%{transform:scale(1.4)}100%{transform:scale(1)}}
+.pips{display:flex;gap:6px;flex:2;align-items:center}.pip{flex:0 0 28px;height:10px;border-radius:5px;background:rgba(255,255,255,.12);transition:all .25s}.pip.f{background:#fff;box-shadow:0 0 12px rgba(255,255,255,.65)}
+.toh{display:flex;align-items:center;gap:10px;margin:10px 0 2px;color:#aab6c9;font-size:14px}.toh b{color:#fff}.toh .step{flex:0 0 52px;padding:9px 0}
+
+/* ---------- game tab ---------- */
+.clk{font-size:84px;font-weight:900;text-align:center;flex:1;font-variant-numeric:tabular-nums;line-height:1;padding:8px 0;text-shadow:0 0 34px rgba(25,195,255,.55);letter-spacing:.02em}
+.clk.low{color:#ff7b7b;text-shadow:0 0 34px rgba(255,80,80,.75)}
+.dist{font-size:26px;font-weight:900;text-align:center}
+
+/* ---------- flag tab ---------- */
+.flagbtn{width:100%;font-size:36px;letter-spacing:.28em;padding:34px 6px;border-radius:20px;color:#111;border:0;
+ background:repeating-linear-gradient(135deg,#ffd400 0 20px,#f0c200 20px 40px);box-shadow:0 0 44px rgba(255,212,0,.35),0 4px 0 #8a6d00}
+.flagbtn.act{background:linear-gradient(135deg,#8f1616,#ef4444);color:#fff;letter-spacing:.1em;box-shadow:0 0 0 rgba(239,68,68,.6),0 4px 0 #5c0b0b;animation:pulseRed 1.5s infinite;font-size:30px}
+@keyframes pulseRed{0%{box-shadow:0 0 0 0 rgba(239,68,68,.55),0 4px 0 #5c0b0b}70%{box-shadow:0 0 0 22px rgba(239,68,68,0),0 4px 0 #5c0b0b}100%{box-shadow:0 0 0 0 rgba(239,68,68,0),0 4px 0 #5c0b0b}}
+#flagopts{animation:fade .35s ease}
+
+/* ---------- show tab ---------- */
+.tiles{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.tagbtn{width:100%;font-size:19px;letter-spacing:.14em;padding:22px 6px;border-radius:18px;border:0;color:#00212e;position:relative;overflow:hidden;
+ background:linear-gradient(135deg,#19c3ff,#8aeaff 55%,#19c3ff);box-shadow:0 0 36px rgba(25,195,255,.38),0 4px 0 #0a6d91}
+.tagbtn::after{content:'';position:absolute;top:0;bottom:0;width:60px;left:-80px;background:linear-gradient(90deg,transparent,rgba(255,255,255,.75),transparent);transform:skewX(-20deg);animation:shine 3.2s ease-in-out infinite}
+@keyframes shine{0%,55%{left:-80px}100%{left:110%}}
+.winbtn{width:100%;font-size:22px;letter-spacing:.16em;padding:30px 6px;border-radius:20px;border:0;color:#02281a;background:linear-gradient(135deg,#12b76a,#7cf0b4 55%,#12b76a);box-shadow:0 0 40px rgba(18,183,106,.35),0 4px 0 #0a6b3f}
+.winbtn.live{background:linear-gradient(135deg,#8f1616,#ef4444);color:#fff;box-shadow:0 0 0 rgba(239,68,68,.6),0 4px 0 #5c0b0b;animation:pulseRed 1.5s infinite}
+.winbtn.ending{filter:saturate(.4) brightness(.8);pointer-events:none}
+.winbtn:disabled{filter:saturate(.3) brightness(.7);box-shadow:none}
+.breakbtn{width:100%;font-size:26px;letter-spacing:.2em;padding:34px 6px;border-radius:20px;border:0;color:#2a1600;background:linear-gradient(135deg,#ffb000,#ffd76a 55%,#ffb000);box-shadow:0 0 40px rgba(255,176,0,.35),0 4px 0 #8a5d00}
+.breakbtn.live{background:linear-gradient(135deg,#8f1616,#ef4444);color:#fff;box-shadow:0 0 0 rgba(239,68,68,.6),0 4px 0 #5c0b0b;animation:pulseRed 1.5s infinite}
+.breakbtn.ending{filter:saturate(.4) brightness(.8);pointer-events:none}
+.tagbtn.live{background:linear-gradient(135deg,#ff4d4d,#ff9a9a 55%,#ff4d4d);box-shadow:0 0 36px rgba(255,77,77,.38),0 4px 0 #8f1d1d;color:#2b0000}
+.tagbtn.busy{filter:saturate(.5) brightness(.8);pointer-events:none}.tagbtn.busy::after{display:none}
+.tagbtn i{position:absolute;left:0;top:0;bottom:0;width:0;background:rgba(255,255,255,.4);pointer-events:none}.tagbtn.busy i{width:100%;transition:width 6.4s linear}
+.tile{display:flex;flex-direction:column;align-items:center;gap:6px;padding:18px 4px;font-size:14px;border-radius:16px}
+.tile::after{content:'OFF';font-size:10px;letter-spacing:.22em;opacity:.65}.tile.on::after{content:'ON';opacity:.85}
+
+.startbtn{width:100%;font-size:19px;letter-spacing:.14em;padding:26px 6px;border-radius:18px;text-transform:uppercase}
+.tile.startbtn.playing{filter:saturate(.55) brightness(.85);pointer-events:none}.tile.startbtn.playing::after{content:'PLAYING INTRO…';opacity:.95}
+.hint{margin:10px 0 0;font-size:13px;font-weight:700;color:#cdd8ea;text-align:center;letter-spacing:.02em}
+/* ---------- tab bar ---------- */
+.tabs{position:fixed;left:0;right:0;bottom:0;z-index:30;display:flex;justify-content:center;padding:14px 10px calc(8px + env(safe-area-inset-bottom));background:linear-gradient(transparent,rgba(6,8,13,.92) 45%);pointer-events:none}
+.tabs-in{pointer-events:auto;display:flex;gap:4px;width:100%;max-width:600px;background:rgba(17,21,32,.92);backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px);border:1px solid var(--line);border-radius:22px;padding:5px;box-shadow:0 12px 44px rgba(0,0,0,.65)}
+.tab{flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;padding:9px 2px 8px;border-radius:17px;border:0;background:transparent;color:var(--mut);font-size:10px;letter-spacing:.12em;text-transform:uppercase;font-weight:800;min-width:0;box-shadow:none;position:relative}
+.tab svg{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.tab.act{color:#00212e;background:linear-gradient(135deg,var(--acc),#7fe5ff);box-shadow:0 0 24px rgba(25,195,255,.5)}
+.tab.alert{color:var(--gold)}.tab.alert.act{color:#3a2c00;background:linear-gradient(135deg,#ffd400,#ffe873)}
+.tab.alert::after{content:'';position:absolute;top:6px;right:22%;width:8px;height:8px;border-radius:50%;background:var(--red);box-shadow:0 0 10px var(--red);animation:glowGold 1.2s infinite}
+</style></head><body>
+
+<header class="hud">
+ <div class="status" id="status">Connecting…</div>
+ <div class="banner" id="tdbanner">TOUCHDOWN playing — points are added when the board comes back up. <button class="sm" onclick="post('tdnow')" style="margin-top:6px;width:100%">Add points now</button></div>
+ <div class="board">
+  <div class="side away" id="h-away"><div class="hnrow"><span class="ball" id="h-away-ball">🏈</span><span class="hn" id="h-away-name"></span></div><div class="hs" id="h-away-score"></div></div>
+  <div class="mid"><div class="hq" id="hqtr">—</div><div class="hc" id="hclk">12:00</div><button class="hplay go" id="hplay" onclick="S&amp;&amp;ck(S.clock.running?'stop':'start')">▶ START</button></div>
+  <div class="side home" id="h-home"><div class="hnrow"><span class="ball" id="h-home-ball">🏈</span><span class="hn" id="h-home-name"></span></div><div class="hs" id="h-home-score"></div></div>
+ </div>
+ <div class="sit" id="hsit"></div>
+ <div class="hflag" id="hflag" style="display:none" onclick="tab('flag')"></div>
+</header>
+
+<main id="app"></main>
+
+<nav class="tabs"><div class="tabs-in">
+ <button class="tab" id="tab-score" onclick="tab('score')"><svg viewBox="0 0 24 24"><rect x="3" y="6" width="18" height="12" rx="2.5"/><path d="M12 6v12M7 12h.01M17 12h.01"/></svg>Score</button>
+ <button class="tab" id="tab-game" onclick="tab('game')"><svg viewBox="0 0 24 24"><circle cx="12" cy="13.5" r="7"/><path d="M12 13.5V9.5M9.5 3h5M18.5 6.5l1.5-1.5"/></svg>Game</button>
+ <button class="tab" id="tab-flag" onclick="tab('flag')"><svg viewBox="0 0 24 24"><path d="M5 21V4M5 4h12l-2.5 4L17 12H5"/></svg>Flag</button>
+ <button class="tab" id="tab-show" onclick="tab('show')"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="12" rx="2"/><path d="M8 20h8M12 16v4"/></svg>Show</button>
+ <button class="tab" id="tab-break" onclick="tab('break')"><svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M10 9.5v5l4.5-2.5z"/></svg>Break</button>
+ <button class="tab" id="tab-settings" onclick="tab('settings')"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M4.9 19.1L7 17M17 7l2.1-2.1"/></svg>Setting</button>
+ <button class="tab" id="tab-teams" onclick="tab('teams')"><svg viewBox="0 0 24 24"><path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z"/></svg>Teams</button>
+</div></nav>
+
+<script src="core.js"></script><script src="hub.js"></script><script src="cam.js"></script>
+<script>
+const bad=m=>{const e=document.getElementById('status');e.className='status bad';e.textContent=m};
+const post=(p,b)=>fetch('/api/'+p,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(b||{})}).then(r=>{if(!r.ok)bad('Server error '+r.status+' on '+p)}).catch(()=>bad("Can't reach the scoreboard. Local mode: is the black Node window open? Website mode: is the controller page still open?"));
+if(location.protocol==='file:')setTimeout(()=>bad('This page was opened as a file. Open http://localhost:3000 instead (run start-windows.bat first).'),0);
+const sc=(t,d)=>post('score',{team:t,delta:d}),to=(t,d)=>post('to',{team:t,delta:d}),td=t=>post('touchdown',{team:t}),st=b=>post('state',b),ck=(a,ms)=>post('clock',{action:a,ms});
+// helpers to build nested patches without string gymnastics
+const setT=(k,key,v)=>st({[k]:{[key]:v}}),setTD=(k,key,v)=>st({[k]:{td:{[key]:v}}}),setUI=(key,v)=>st({ui:{[key]:v}});
+const crow=(id,label,fn)=>`<div class=row><span class=lb>${label}</span><input type=color id=${id} onchange="${fn}"></div>`;
+function readImg(file,max=400){return new Promise(res=>{const r=new FileReader();r.onload=()=>{const im=new Image();im.onload=()=>{const w=im.width||300,h=im.height||300,k=Math.min(1,max/Math.max(w,h)),c=document.createElement('canvas');c.width=Math.round(w*k);c.height=Math.round(h*k);c.getContext('2d').drawImage(im,0,0,c.width,c.height);res(c.toDataURL('image/png'))};im.src=r.result};r.readAsDataURL(file)})}
+async function upLogo(k,inp){if(inp.files[0]){setT(k,'logo',await readImg(inp.files[0]));inp.value=''}}
+async function upTD(k,inp){if(inp.files[0]){st({[k]:{td:{logo:await readImg(inp.files[0]),style:'custom'}}});inp.value=''}}
+function useSb(k){if(!S[k].logo){alert('Upload a scoreboard logo first.');return}st({[k]:{td:{style:'custom',color:S[k].color,logo:S[k].logo}}})}
+
+// ---- SCORE tab: scoring + timeouts per team
+const teamScore=(k,l)=>`<div class="card team" id=${k}-card><div class=thead><span class=sw></span><span class=ttl id=${k}-title></span><span class=side-tag>${l}</span></div>
+<div class=row><button onclick="sc('${k}',-1)">−1</button><div class=big id=${k}-score></div><button onclick="sc('${k}',1)">+1</button></div>
+<div class=row><button onclick="sc('${k}',2)">+2</button><button onclick="sc('${k}',3)">+3</button><button onclick="sc('${k}',7)">+7</button><button class=td id=${k}-tdb onclick="td('${k}')">TOUCHDOWN +6</button></div>
+<div class=toh><span>Timeouts</span><span class=pips id=${k}-pips><i class=pip></i><i class=pip></i><i class=pip></i></span><b id=${k}-to></b><button class="step sm" onclick="to('${k}',-1)">−</button><button class="step sm" onclick="to('${k}',1)">+</button></div></div>`;
+
+// ---- TEAMS tab: look + touchdown animation per team
+const teamLook=(k,l)=>`<div class="card team" id=${k}-lcard><h3>${l}</h3>
+<details open><summary>Scoreboard look (name, record, colors, logo)</summary>
+<div class=row><input id=${k}-name placeholder="Team name" onchange="setT('${k}','name',this.value)"><input id=${k}-rec placeholder="Record" maxlength=8 style="flex:0 0 84px" onchange="setT('${k}','rec',this.value)"></div>
+${crow(k+'-color','Team color',`setT('${k}','color',this.value)`)}${crow(k+'-tc','Text color',`setT('${k}','tc',this.value)`)}
+<div class=row><img class=thumb id=${k}-logoimg><label class=fbtn>Upload logo<input type=file accept="image/*" hidden onchange="upLogo('${k}',this)"></label><button class=sm onclick="setT('${k}','logo','')">Remove</button></div>
+<div class=note>Transparent PNG works best.</div></details>
+<details><summary>Touchdown animation (logo + color)</summary>
+<div class=row><span class=lb>Logo style</span><select id=${k}-tds onchange="setTD('${k}','style',this.value)"><option value=hawks>Hawks "H" (built-in)</option><option value=helmet>Gold helmet (built-in)</option><option value=custom>Custom logo (upload)</option></select></div>
+${crow(k+'-tdc','Animation color',`setTD('${k}','color',this.value)`)}
+<div class=row><img class=thumb id=${k}-tdimg><label class=fbtn>Upload TD logo<input type=file accept="image/*" hidden onchange="upTD('${k}',this)"></label><button class=sm onclick="setTD('${k}','logo','')">Remove</button></div>
+<div class=row><button class=sm onclick="useSb('${k}')">Use scoreboard logo + color</button><button class=sm onclick="post('trigger',{team:'${k}'})">▶ Test animation</button></div>
+<div class=note>Custom logo = your uploaded image becomes the 3D logo. Transparent PNG gives the cleanest shape.</div></details></div>`;
+
+const PEN=[['Offense',['False Start','Offensive Holding','Illegal Formation','Illegal Motion','Illegal Shift','Ineligible Receiver Downfield','Offensive Pass Interference','Intentional Grounding','Illegal Forward Pass','Illegal Touching','Illegal Block in the Back','Chop Block','Delay of Game','Illegal Snap']],
+['Defense',['Offside','Encroachment','Neutral Zone Infraction','Defensive Holding','Defensive Pass Interference','Illegal Contact','Illegal Use of Hands','Roughing the Passer','Leverage','Leaping']],
+['Kicking',['Roughing the Kicker','Running Into the Kicker','Kick Catch Interference','Illegal Fair Catch Signal','Illegal Kick','Illegal Free Kick Formation']],
+['Fouls & conduct',['Unnecessary Roughness','Personal Foul','Face Mask','Horse-Collar Tackle','Late Hit','Targeting','Tripping','Clipping','Unsportsmanlike Conduct','Taunting','Disqualification']],
+['Other',['Too Many Players on Field','Illegal Substitution','Illegal Participation','Sideline Interference','Illegal Equipment']]];
+const PENOPTS='<option value=Unknown>Unknown</option>'+PEN.map(([g,a])=>'<optgroup label="'+g.replace('&','&amp;')+'">'+a.map(x=>'<option>'+x+'</option>').join('')+'</optgroup>').join('');
+const opts=(arr,fn,id)=>arr.map(([l,v])=>`<button data-g=${id} data-v="${v}" onclick="${fn}('${v}')">${l}</button>`).join('');
+
+document.getElementById('app').innerHTML=
+`<section class=panel id=p-score><div class=grid2>${teamScore('away','AWAY · LEFT')}${teamScore('home','HOME · RIGHT')}</div></section>`+
+
+`<section class=panel id=p-game><div class=grid2><div>
+<div class=card><h3>Game clock</h3><div class=row><div class=clk id=clk>12:00</div></div>
+<div class=row><button class=go onclick="ck('start')">▶ START</button><button class=stop onclick="ck('stop')">❚❚ STOP</button><button onclick="ck('nudge',-1000)">−1s</button><button onclick="ck('nudge',1000)">+1s</button></div>
+<div class=row><input id=ct value="12:00" inputmode=numeric><button onclick="setClk()">SET TIME</button></div></div>
+<div class=card><h3>Quarter</h3><div class=seg>${opts(['1ST','2ND','HALF','3RD','4TH','OT'].map((l,i)=>[l,i]),'qtr','q')}</div>
+<h3 class=sub>Possession</h3><div class=seg>${opts([['AWAY','away'],['NONE',''],['HOME','home']],'pos','p')}</div></div></div><div>
+<div class=card><h3>Down &amp; distance</h3><div class=seg>${opts([['—',0],['1st',1],['2nd',2],['3rd',3],['4th',4]],'dn','d')}</div>
+<div class=row style="margin-top:12px"><button onclick="dist(-1)">−</button><input id=dist type=number inputmode=numeric class=dist onchange="st({dist:+this.value})"><button onclick="dist(1)">+</button><button onclick="st({dist:0})">GOAL</button></div>
+<div class=row><input id=spot placeholder="Ball on (e.g. OWN 25)" onchange="st({spot:this.value})"></div></div>
+<div class=card><h3>Show winner</h3>
+<div class=row><button class=winbtn id=winbtn onclick="toggleWin()"><span id=wintxt>▶ SHOW WINNER</span></button></div>
+<h3 class=sub>Who won</h3><div class=seg>${opts([['AUTO','auto'],['AWAY','away'],['HOME','home']],'winpick','w')}</div>
+<div class=hint id=winhint></div></div>
+</div></div></section>`+
+
+`<section class=panel id=p-flag><div class=card><h3>Penalty flag</h3>
+<div class=row><button class=flagbtn id=flagbtn onclick="S.flag.banner?post('flagclear'):post('flag')">FLAG</button></div>
+<div id=flagopts style="display:none">
+<h3 class=sub>Who got it</h3><div class=row><select id=flagteam onchange="post('flagteam',{team:this.value})"><option value="">— Which team? —</option><option value=away>Away</option><option value=home>Home</option></select></div>
+<h3 class=sub>Penalty</h3><div class=row><select id=flagpen disabled onchange="post('flagpen',{pen:this.value})"><option value="">— Choose penalty —</option>${PENOPTS}</select></div>
+<div class=row><button class=sm onclick="post('flaganim')">↻ Replay animation</button></div>
+<div class=note>The team goes black and the penalty shows on top of that team's side. Press CLEAR FLAG when the play is over.</div></div>
+<div class=note id=flagidle>Press FLAG to throw it: the yellow flag waves behind the scoreboard and the FLAG banner replaces down &amp; distance. Then pick the team and penalty.</div></div></section>`+
+
+`<section class=panel id=p-show><div class=card><h3>Channel tag</h3>
+<div class=row><span class=lb style="flex:1">Stadium</span><input id=stadium placeholder="e.g. Farmington Memorial Stadium" maxlength=60 style="flex:2" onchange="st({stadium:this.value})"></div>
+<div class=row><span class=lb style="flex:1">Show for (seconds)</span><input id=tagsecs type=number inputmode=numeric min=5 max=300 step=1 style="flex:1;max-width:120px" onchange="tagSecs(this.value)"></div>
+<div class=tiles style="grid-template-columns:1fr;margin-bottom:10px"><button class=tile id=btaghold onclick="st({tagHold:!S.tagHold})">Keep on until I turn it off</button></div>
+<div class=row><button class=tagbtn id=tagbtn onclick="playTag()"><i></i><span id=tagtxt>▶ PLAY CHANNEL TAG</span></button></div>
+<div class=note>The scoreboard drops away and a 3D "You're watching GIOGAMES FOOTBALL — Playing at the …" banner plays along the bottom of the screen. It stays up for the number of seconds above (5-300), then the scoreboard comes back. Turn on "Keep on until I turn it off" and it stays up until you press STOP CHANNEL TAG. A touchdown cuts the tag. Leave the stadium empty to skip the "Playing at the" line.</div></div>
+<div class=card><h3>On air</h3><div class=tiles>
+<button class=tile id=bsb onclick="st({sb:!S.sb})">Scoreboard</button><button class=tile id=bclk onclick="st({showClock:!S.showClock})">Game clock</button><button class=tile id=bbug onclick="st({bug:!S.bug})">GIOGAMES bug</button></div></div>
+<div class=card><h3>Size &amp; position</h3>
+<div class=srow><div class=top><span>Height from bottom</span><span class=pill id=sbbot-v></span></div><input type=range id=sbbot min=0 max=14 step=.5 onchange="st({sbBottom:+this.value})"></div>
+<div class=srow><div class=top><span>Scoreboard size</span><span class=pill id=sbscale-v></span></div><input type=range id=sbscale min=.5 max=1.5 step=.05 oninput="sl('sbScale',this.value)"></div>
+<div class=srow><div class=top><span>GIOGAMES logo size</span><span class=pill id=bugscale-v></span></div><input type=range id=bugscale min=.5 max=2 step=.05 oninput="sl('bugScale',this.value)"></div></div>
+<div class=card><h3>Colors</h3><details><summary>Center cell colors</summary>${crow('ui-scoreBg','Score boxes',"setUI('scoreBg',this.value)")}${crow('ui-qtrBg','Quarter / clock',"setUI('qtrBg',this.value)")}${crow('ui-ddBg','Down &amp; distance',"setUI('ddBg',this.value)")}</details></div>
+<div class=card><h3>Danger zone</h3><div class=row><button class=red onclick="if(confirm('Reset scores, clock and quarter? (names, logos and colors are kept)'))post('reset')">NEW GAME / RESET</button></div></div></section>`+
+
+`<section class=panel id=p-break><div class=card><h3>Starting soon screen</h3>
+<div class=tiles style="grid-template-columns:1fr"><button class="tile startbtn" id=startbtn onclick="toggleStart()">Starting soon screen</button></div>
+<div class=hint id=starthint></div>
+<div class=note>The overlay always opens on this screen (3D GIOGAMES logo + "Starting soon", no scoreboard) so nothing shows on stream until you're ready. Turn it OFF: starting.mov plays full screen, the screen fades to your transparent overlay, and the scoreboard and bug come in. Turn it ON to bring the screen back. A touchdown while it's up adds the 6 points with no animation.</div></div>
+<div class=card><h3>Ad break</h3>
+<div class=row><button class=breakbtn id=breakbtn onclick="toggleBreak()"><span id=breaktxt>▶ START AD BREAK</span></button></div>
+<div class=note>START: the scoreboard and the GIOGAMES bug leave, the screen fades to black, then a full-screen GIOGAMES logo, "We'll be right back" and a compact score bar (team logos next to the scores, no names) come up. END: it all fades out to black, the black fades away, and the scoreboard and bug come back like normal. You can still change scores during the break and the bar updates. A touchdown during the break adds the 6 points with no animation. The overlay has to be open in OBS.</div></div></section>`+
+`<section class=panel id=p-teams><div class=grid2>${teamLook('away','Away · left')}${teamLook('home','Home · right')}</div></section>`
++`<section class=panel id=p-settings><div class=card><h3>Camera mode</h3>
+<div class=tiles style="grid-template-columns:1fr"><button class="tile" id=camtog onclick="camToggle()">Camera mode</button></div>
+<div class=hint id=camhint></div>
+<div id=camwrap style="display:none;position:relative;aspect-ratio:16/9;margin-top:10px;border-radius:14px;overflow:hidden;background:#000"><div id=camlive style="position:absolute;inset:0"></div></div>
+<div class=row id=camrow style="display:none"><button class=sm id=pipbtn onclick="camPip()">Picture-in-Picture</button><button class=sm onclick="GioCam.flip().catch(e=>$('camhint').textContent=e.message)">Flip camera</button></div>
+<div class=note>ON: the camera and mic replace the transparent background on every overlay page (the overlay page asks for its own camera permission the first time - tap the blue button on it). PiP floats the live view using your phone's own Picture-in-Picture; on iPhone it shows the camera plus a simplified scoreboard (scores, clock, down &amp; distance, FLAG) - the 3D animations only show in the big live view above, because iOS can only float a video, not a web page. Mic audio goes to the overlay page; it is muted in the PiP window so you don't get an echo.</div></div>
+<div class=card id=webcard style="display:none"><h3>Website mode - no server</h3><div class=note>This page is running the scoreboard itself and talks directly to your other devices, so nothing has to be hosted or left running. Keep this page open (that is what holds the game). On the stream device open the Overlay link; to control from a second device open the Controller link.</div>
+<div class=row><button class=sm onclick="cpy(__gio.overlayUrl,this)">Copy overlay link</button><button class=sm onclick="cpy(__gio.controlUrl,this)">Copy controller link</button></div><div class=hint id=roomtxt></div></div></section>`;
+
+let slT=0;const sl=(k,v)=>{const n=Date.now();if(n-slT>70){slT=n;st({[k]:+v})}};document.addEventListener('change',e=>{const i=e.target;if(i.id==='sbscale')st({sbScale:+i.value});if(i.id==='bugscale')st({bugScale:+i.value})});
+const tagSecs=v=>{const n=Math.min(300,Math.max(5,Math.round(+v)||6));$('tagsecs').value=n;st({tagSecs:n})};
+function toggleWin(){if(!S||S.winEnding)return;post(S.winLive?'winoff':'winon')}
+const winpick=v=>st({winPick:v});
+function toggleStart(){if(!S||S.startEnding)return;post(S.startLive?'startoff':'starton')}
+function toggleBreak(){if(!S)return;if(S.breakLive){if(!S.breakEnding)post('breakoff')}else post('breakon')}
+function playTag(){if(S&&S.tagLive)post('tagstop');else post('tag',{stadium:$('stadium').value,secs:Math.min(300,Math.max(5,Math.round(+$('tagsecs').value)||6))})}
+const qtr=v=>st({qtr:+v}),dn=v=>st({down:+v}),pos=v=>st({poss:v}),dist=d=>st({dist:Math.max(0,(S.dist||0)+d)});
+function setClk(){const m=document.getElementById('ct').value.split(':');const ms=((+m[0]||0)*60+(+m[1]||0))*1000;ck('set',ms)}
+
+// ---- tabs (remembers the last one you used)
+const TABS=['score','game','flag','show','break','teams','settings'];
+function tab(n){if(!TABS.includes(n))n='score';for(const t of TABS){$('p-'+t).classList.toggle('act',t===n);$('tab-'+t).classList.toggle('act',t===n)}try{localStorage.setItem('gg-tab',n)}catch(e){}window.scrollTo({top:0})}
+document.addEventListener('click',e=>{if(navigator.vibrate&&e.target.closest('button,.fbtn'))navigator.vibrate(8)});
+
+let S=null,at=0;const $=id=>document.getElementById(id),fmt=ms=>Math.floor(ms/60000)+':'+String(Math.floor(ms/1000)%60).padStart(2,'0');
+const setv=(id,v)=>{const e=$(id);if(e&&document.activeElement!==e)e.value=v};
+const img=(id,src)=>{const e=$(id);if(e.getAttribute('src')!==(src||null)){src?e.src=src:e.removeAttribute('src')}};
+const bump=(id,v)=>{const e=$(id),s=String(v);if(e.textContent!==s){const had=e.textContent!=='';e.textContent=s;if(had){e.classList.remove('bump');void e.offsetWidth;e.classList.add('bump')}}};
+const ORD=['','1st','2nd','3rd','4th'],QN=['1ST','2ND','HALF','3RD','4TH','OT'];
+function sync(){for(const k of['home','away']){const t=S[k];$(k+'-title').innerHTML='';$(k+'-title').append(t.name+(t.rec?'  ':''));if(t.rec){const s=document.createElement('small');s.textContent='('+t.rec+')';$(k+'-title').append(s)}
+  setv(k+'-name',t.name);setv(k+'-rec',t.rec);setv(k+'-color',t.color);setv(k+'-tc',t.tc);setv(k+'-tds',t.td.style);setv(k+'-tdc',t.td.color);
+  img(k+'-logoimg',t.logo);img(k+'-tdimg',t.td.logo);bump(k+'-score',t.score);$(k+'-to').textContent=t.to;$(k+'-tdb').disabled=!!S.tdp;
+  for(const c of[k+'-card',k+'-lcard','h-'+k])$(c).style.setProperty('--c',t.color);
+  [...$(k+'-pips').children].forEach((p,i)=>p.classList.toggle('f',i<t.to));
+  $('h-'+k+'-name').textContent=t.name;bump('h-'+k+'-score',t.score);$('h-'+k+'-ball').style.visibility=S.poss===k?'visible':'hidden'}
+ for(const[i,v]of Object.entries(S.ui))setv('ui-'+i,v);setv('sbbot',S.sbBottom);setv('sbscale',S.sbScale);setv('bugscale',S.bugScale);
+ $('sbbot-v').textContent=S.sbBottom+' vw';$('sbscale-v').textContent=Math.round(S.sbScale*100)+'%';$('bugscale-v').textContent=Math.round(S.bugScale*100)+'%';
+ setv('stadium',S.stadium||'');setv('tagsecs',S.tagSecs);{const SL=!!S.startLive,SE=!!S.startEnding,sbn=$('startbtn');sbn.classList.toggle('on',SL&&!SE);sbn.classList.toggle('playing',SE);sbn.disabled=!SL&&(!!S.breakLive||!!S.tdp||!!S.winLive);
+ $('starthint').textContent=SE?'Playing starting.mov… the scoreboard comes in when it finishes.':SL?'ON AIR now. Tap to turn it off and play the intro.':S.breakLive?'Ad break is on. End it first to bring this screen back.':'Off. Tap to bring the Starting soon screen back.';
+ const bb=$('breakbtn'),L=!!S.breakLive,E=!!S.breakEnding;bb.classList.toggle('live',L&&!E);bb.classList.toggle('ending',E);bb.disabled=(SL&&!L)||(!!S.winLive&&!L);$('breaktxt').textContent=E?'ENDING…':L?'■ END AD BREAK':'▶ START AD BREAK';$('tab-break').classList.toggle('alert',L||SL)}$('btaghold').classList.toggle('on',!!S.tagHold);{const tb=$('tagbtn');tb.classList.toggle('live',!!S.tagLive);$('tagtxt').textContent=S.tagLive?'■ STOP CHANNEL TAG':'▶ PLAY CHANNEL TAG'}setv('dist',S.dist);setv('spot',S.spot);$('bsb').classList.toggle('on',S.sb);$('bbug').classList.toggle('on',S.bug);$('bclk').classList.toggle('on',S.showClock);
+ $('tdbanner').style.display=S.tdp?'block':'none';
+ const F=S.flag,ft=$('flagteam');ft.options[1].textContent=(S.away.name||'Away')+' (left)';ft.options[2].textContent=(S.home.name||'Home')+' (right)';
+ setv('flagteam',F.team);setv('flagpen',F.pen);$('flagpen').disabled=!F.team;$('flagopts').style.display=F.banner?'block':'none';$('flagidle').style.display=F.banner?'none':'block';
+ const fb=$('flagbtn');fb.textContent=F.banner?'CLEAR FLAG':'FLAG';fb.classList.toggle('act',!!F.banner);$('tab-flag').classList.toggle('alert',!!F.banner);
+ const hf=$('hflag');hf.style.display=F.banner?'block':'none';hf.textContent='FLAG'+(F.team?' · '+S[F.team].name:'')+(F.pen?' · '+F.pen:'');
+ $('hqtr').textContent=QN[S.qtr]||'—';
+ {const W=!!S.winLive,WE=!!S.winEnding,wb=$('winbtn'),tie=S.winPick==='auto'&&S.home.score===S.away.score;
+  wb.classList.toggle('live',W&&!WE);wb.classList.toggle('ending',WE);wb.disabled=!W&&(!!S.breakLive||!!S.startLive||!!S.tdp||tie);
+  $('wintxt').textContent=WE?'HIDING…':W?'■ HIDE WINNER':'▶ SHOW WINNER';$('tab-game').classList.toggle('alert',W);
+  $('winhint').textContent=WE?'Playing the exit… the scoreboard comes back when it finishes.':W?'ON AIR: '+(S.winTeam&&S[S.winTeam]?S[S.winTeam].name:'')+' wins. The final score updates live. Tap to hide it.':
+   S.breakLive||S.startLive?'Turn off the ad break / starting soon screen first.':tie?'Scores are tied. Pick AWAY or HOME to show a winner.':
+   'Plays the winner\'s logo + color from Teams > Touchdown animation, then the final score. Stays up until you hide it.'}
+ const dd=S.down?ORD[S.down]+' & '+(S.dist||'Goal'):'';$('hsit').textContent=[dd,S.spot].filter(Boolean).join('  ·  ')||'No down set';
+ const hp=$('hplay'),run=!!S.clock.running;hp.textContent=run?'❚❚ STOP':'▶ START';hp.classList.toggle('go',!run);hp.classList.toggle('stop',run);
+ document.querySelectorAll('[data-g]').forEach(b=>{const m={q:S.qtr,d:S.down,p:S.poss,w:S.winPick}[b.dataset.g];b.classList.toggle('on',String(m)===b.dataset.v)})}
+setInterval(()=>{if(!S)return;const ms=S.clock.running?Math.max(0,S.clock.ms-(performance.now()-at)):S.clock.ms,t=fmt(ms),low=S.clock.running&&ms<60000;
+ for(const id of['clk','hclk']){const e=$(id);if(e.textContent!==t)e.textContent=t;e.classList.toggle('low',low)}},100);
+const es=new EventSource('/events');
+es.onmessage=e=>{try{const d=JSON.parse(e.data);
+ if(d.v!==2||!d.home||!d.home.td||!d.flag||d.fv!==6){S=null;bad('OLD SERVER STILL RUNNING. Close every black Node window (or press Ctrl+C in it), then double-click start-windows.bat from THIS folder and reload this page.');return}
+ S=d;at=performance.now();const s=$('status');s.className='status';s.textContent='Connected';sync();camSync()}catch(err){bad('Controller error: '+err.message)}};
+es.onerror=()=>bad('Disconnected from the scoreboard server — retrying…');
+
+// ---- settings: camera mode + PiP + website-mode links
+const cpy=(t,b)=>{(navigator.clipboard?navigator.clipboard.writeText(t):Promise.reject()).catch(()=>prompt('Copy this link',t));const o=b.textContent;b.textContent='Copied';setTimeout(()=>b.textContent=o,1200)};
+GioCam.init({getS:()=>S&&{S,at},onChange:()=>camSync()});
+let camIf=null;
+function camSync(){if(!S)return;const on=!!S.cam,loc=GioCam.on;
+ $('camtog').classList.toggle('on',on);
+ $('camwrap').style.display=on?'block':'none';$('camrow').style.display=on?'flex':'none';
+ if(on&&!camIf){camIf=document.createElement('iframe');camIf.src='overlay.html?embed=1'+(window.__gio?'&room='+__gio.room:'');Object.assign(camIf.style,{position:'absolute',inset:0,width:'100%',height:'100%',border:0,background:'transparent'});$('camlive').append(camIf)}
+ if(!on&&camIf){camIf.remove();camIf=null}
+ if(on&&loc&&GioCam.src&&!GioCam.src.isConnected){GioCam.src.style.zIndex=0;$('camwrap').prepend(GioCam.src);camIf.style.zIndex=1;$('camlive').style.zIndex=1}
+ $('pipbtn').textContent=GioCam.pipOn()?'Close Picture-in-Picture':'Picture-in-Picture';
+ $('pipbtn').style.display=GioCam.supported()?'':'none';
+ $('camhint').textContent=on?(loc?'Live: camera + mic on this device.':'On for the overlay pages. Tap Camera mode to also start the camera on THIS device (needed for the preview and PiP).'):'Off - overlays have a transparent background.';
+ if(window.__gio){$('webcard').style.display='block';$('roomtxt').textContent='Room code: '+__gio.room}}
+async function camToggle(){const on=!(S&&S.cam);
+ try{if(on&&S&&S.cam===false&&false){}
+  if(S&&S.cam&&!GioCam.on){await GioCam.start();camSync();return}
+  if(on){await GioCam.start();}else GioCam.stop();st({cam:on})}
+ catch(e){$('camhint').textContent=e.name==='NotAllowedError'?'Camera/mic permission was denied. Allow it in your browser settings for this site, then try again.':'Camera problem: '+e.message;st({cam:false})}}
+function camPip(){GioCam.pip().then(camSync).catch(e=>$('camhint').textContent='PiP: '+e.message)}
+let t0='score';try{t0=localStorage.getItem('gg-tab')||'score'}catch(e){}tab(t0);
+</script></body></html>

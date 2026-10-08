@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#000000">
+<title>GIOGAMES Stadium Display</title>
+<style>
+  html,body{margin:0;height:100%;overflow:hidden;background:#000;user-select:none;-webkit-user-select:none}
+  body{--bg:#000;display:flex;align-items:center;justify-content:center;font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+  body.idle,body.idle *{cursor:none!important}
+
+  /* The 16:9 stage. The scoreboard is built in vw units, so it scales perfectly to any screen size. */
+  #stage{position:relative;background:var(--bg);width:min(100vw,177.7778vh);height:min(100vh,56.25vw);overflow:hidden}
+  body.fill #stage{width:100vw;height:100vh}
+  #stage iframe{position:absolute;inset:0;width:100%;height:100%;border:0;background:transparent}
+
+  /* Click-to-start gate: a click is needed so the browser allows fullscreen + sound */
+  #gate{position:fixed;inset:0;z-index:10;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2.2vh;
+    background:radial-gradient(ellipse at 50% 40%,#13203a 0%,#05070d 70%);color:#fff;cursor:pointer;transition:opacity .6s ease}
+  #gate.gone{opacity:0;pointer-events:none}
+  #gate h1{margin:0;font-size:clamp(28px,6vw,92px);font-weight:900;letter-spacing:.08em;text-transform:uppercase;text-align:center}
+  #gate h1 b{color:#ffcf3a}
+  #gate .btn{padding:1.6vh 3.2vw;border-radius:999px;background:#19c3ff;color:#00212e;font-weight:800;font-size:clamp(16px,2.2vw,34px);
+    letter-spacing:.06em;box-shadow:0 0 40px rgba(25,195,255,.55);animation:pulse 1.6s ease-in-out infinite}
+  #gate p{margin:0;opacity:.6;font-size:clamp(12px,1.3vw,20px);text-align:center;line-height:1.6}
+  #gate kbd{background:#ffffff22;border-radius:6px;padding:.1em .5em;font-family:inherit}
+  @keyframes pulse{50%{transform:scale(1.05)}}
+
+  #toast{position:fixed;left:50%;bottom:3vh;transform:translate(-50%,20px);z-index:20;padding:1vh 2vw;border-radius:999px;
+    background:rgba(0,0,0,.78);color:#fff;font-weight:700;font-size:clamp(12px,1.4vw,22px);opacity:0;pointer-events:none;transition:.3s}
+  #toast.on{opacity:1;transform:translate(-50%,0)}
+</style>
+</head>
+<body>
+<div id="stage"></div>
+
+<div id="gate">
+  <h1><b>GIO</b>GAMES FOOTBALL</h1>
+  <div class="btn">&#9654; CLICK TO START DISPLAY</div>
+  <p>Goes fullscreen with sound enabled. Press <kbd>F</kbd> fullscreen &nbsp;&middot;&nbsp; <kbd>B</kbd> background &nbsp;&middot;&nbsp; <kbd>S</kbd> fit / fill &nbsp;&middot;&nbsp; <kbd>R</kbd> reload</p>
+</div>
+<div id="toast"></div>
+
+<script>
+(function(){
+  var qs=new URLSearchParams(location.search),LS=window.localStorage;
+  var stage=document.getElementById('stage'),gate=document.getElementById('gate'),toast=document.getElementById('toast'),frame=null;
+
+  // ---- Background behind the scoreboard (black by default). ?bg=black|green|blue|grey|field|white|#hex  ----
+  var BGS=[['Black','#000000'],['Chroma green','#00b140'],['Chroma blue','#0047bb'],['Dark grey','#14161c'],['Field green','#14532d'],['White','#ffffff']];
+  function bgIndex(){var v=qs.get('bg')||LS.getItem('gg-stadium-bg')||'black',i=-1;
+    BGS.forEach(function(b,n){if(b[0].toLowerCase().indexOf(v.toLowerCase())>=0||b[1]===v)i=n});
+    return i<0?(/^#?[0-9a-f]{3,8}$/i.test(v)?'custom:'+(v[0]==='#'?v:'#'+v):0):i}
+  var bi=bgIndex();
+  function applyBg(){
+    if(typeof bi==='string'){document.body.style.setProperty('--bg',bi.slice(7));return}
+    document.body.style.setProperty('--bg',BGS[bi][1]);
+  }
+  function say(t){toast.textContent=t;toast.classList.add('on');clearTimeout(say.t);say.t=setTimeout(function(){toast.classList.remove('on')},1800)}
+
+  // ---- Fit (letterbox 16:9) or Fill (stretch to any screen shape). ?fit=fill ----
+  function applyFit(){document.body.classList.toggle('fill',(qs.get('fit')||LS.getItem('gg-stadium-fit'))==='fill')}
+
+  function fullscreen(){
+    var d=document,el=d.documentElement;
+    if(d.fullscreenElement||d.webkitFullscreenElement){(d.exitFullscreen||d.webkitExitFullscreen).call(d)}
+    else{var f=el.requestFullscreen||el.webkitRequestFullscreen;if(f)try{var p=f.call(el,{navigationUI:'hide'});if(p&&p.catch)p.catch(function(){})}catch(e){}}
+  }
+
+  // ---- Keep the screen awake ----
+  var wl=null;
+  function wake(){try{if(navigator.wakeLock)navigator.wakeLock.request('screen').then(function(l){wl=l}).catch(function(){})}catch(e){}}
+  document.addEventListener('visibilitychange',function(){if(document.visibilityState==='visible'&&frame)wake()});
+
+  // ---- Hide the mouse cursor when idle ----
+  var idleT,idleCss=null;
+  function setIdle(on){document.body.classList.toggle('idle',on);
+    try{var d=frame&&frame.contentDocument;if(d){if(!idleCss){idleCss=d.createElement('style');idleCss.textContent='*{cursor:none!important}'}
+      if(on)d.head.appendChild(idleCss);else if(idleCss.parentNode)idleCss.remove()}}catch(e){}}
+  function poke(){setIdle(false);clearTimeout(idleT);idleT=setTimeout(function(){setIdle(true)},2000)}
+  document.addEventListener('mousemove',poke);
+
+  function keys(e){
+    var k=(e.key||'').toLowerCase();
+    if(k==='f'){fullscreen();e.preventDefault()}
+    else if(k==='b'){bi=(typeof bi==='string'?0:(bi+1)%BGS.length);LS.setItem('gg-stadium-bg',BGS[bi][0]);applyBg();say('Background: '+BGS[bi][0])}
+    else if(k==='s'){var fill=!document.body.classList.contains('fill');LS.setItem('gg-stadium-fit',fill?'fill':'fit');applyFit();say(fill?'Fill screen':'Fit 16:9')}
+    else if(k==='r'){load()}
+  }
+  document.addEventListener('keydown',keys);
+  document.addEventListener('dblclick',fullscreen);
+
+  function load(){
+    if(frame)frame.remove();
+    frame=document.createElement('iframe');
+    frame.setAttribute('allow','autoplay; fullscreen');
+    frame.src='overlay.html';
+    frame.addEventListener('load',function(){
+      try{var w=frame.contentWindow;w.addEventListener('keydown',keys);w.addEventListener('dblclick',fullscreen);w.addEventListener('mousemove',poke)}catch(e){}
+    });
+    stage.appendChild(frame);
+  }
+
+  function start(){
+    gate.classList.add('gone');
+    fullscreen();wake();load();poke();
+  }
+  gate.addEventListener('click',start);
+  document.addEventListener('keydown',function(e){if(!gate.classList.contains('gone')&&(e.key==='Enter'||e.key===' ')){e.preventDefault();start()}});
+
+  applyBg();applyFit();
+  if(qs.get('auto')==='1'){gate.classList.add('gone');load();wake()}   // ?auto=1 : skip the click gate (no auto fullscreen/sound - browser rules)
+})();
+</script>
+</body>
+</html>
