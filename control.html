@@ -144,7 +144,7 @@ summary{padding:12px 0;font-weight:800;color:#cdd8ea;cursor:pointer;font-size:14
  <button class="tab" id="tab-teams" onclick="tab('teams')"><svg viewBox="0 0 24 24"><path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z"/></svg>Teams</button>
 </div></nav>
 
-<script src="core.js"></script><script src="hub.js"></script><script src="cam.js"></script>
+<script src="core.js"></script><script src="turn-config.js"></script><script src="hub.js"></script><script src="cam.js"></script>
 <script>
 const bad=m=>{const e=document.getElementById('status');e.className='status bad';e.textContent=m};
 const post=(p,b)=>fetch('/api/'+p,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(b||{})}).then(r=>{if(!r.ok)bad('Server error '+r.status+' on '+p)}).catch(()=>bad("Can't reach the scoreboard. Local mode: is the black Node window open? Website mode: is the controller page still open?"));
